@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score
 import statistics
 import os
 from collections import Counter
+import csv
 
 # Parameters specified
 #24000
@@ -70,11 +71,14 @@ class LRUCache(object):
                 self.swapped_history[item] = []
             self.swapped_history[item].append(self.hash[item])
             self.record[item][len(self.record[item])-1].extend((self.hash[item], -1))
-        print(self.record)
+        #print(self.record)
         f = open("dict.txt","w")
         for k, v in self.record.items():
             f.write(str(k) + ': '+ str(v) + '\n')
         f.close()
+        # w = csv.writer(open("output.csv", "w"))
+        # for key, val in self.record.items():
+        #     w.writerow([key, val])
 
 
 # read file and split
