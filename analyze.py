@@ -9,7 +9,7 @@ from collections import Counter
 
 # Parameters specified
 #24000
-PTcapacity = 5
+PTcapacity = 24000
 cachelineCapacity = 3
 
 
