@@ -83,14 +83,14 @@ with open('tiny_trace.txt', 'r') as f0:
 #trace = f0.read()
     target = [i.rstrip("\n").split(' ')[2] for i in f0]
 #op = [i.rstrip("\n").split(' ')[1] for i in f0]
-
+print('finished reading')
 # get page and cache line visits by shifting the addresses
 pages = [i[:-3] for i in target]
 #print(pages)
-page_cum = Counter(pages)
+#page_cum = Counter(pages)
 #print(page_cum)
 
-lines = [bin(int(i[2:], 16))[2:-6] for i in target]
+#lines = [bin(int(i[2:], 16))[2:-6] for i in target]
 #print(lines)
 
 # build LRU cache simulator and print result
