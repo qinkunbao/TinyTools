@@ -1,8 +1,5 @@
-from sklearn import tree
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import accuracy_score
 import statistics
 import os
 from collections import Counter
