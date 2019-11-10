@@ -243,6 +243,7 @@ VOID RecordMemRead(VOID * ip, VOID * addr)
 {
     //fprintf(trace,"%p: R %p\n", ip, addr);
     int x = static_cast<int>(reinterpret_cast<std::uintptr_t>(addr));
+    counter++;
     cache.visit(x/4096, 0);
 }
 
@@ -251,6 +252,7 @@ VOID RecordMemWrite(VOID * ip, VOID * addr)
 {
     //fprintf(trace,"%p: W %p\n", ip, addr);
     int x = static_cast<int>(reinterpret_cast<std::uintptr_t>(addr));
+    counter++;
     cache.visit(x/4096, 1);
 }
 
