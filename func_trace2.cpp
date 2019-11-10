@@ -24,17 +24,17 @@
 
 //#define PRINT_RTN_INSTRUCTION
 
-
+typedef unsigned long uintptr_t;
 using namespace std;
 
-
+bool silent;
 ofstream trace;
 int numRtnsParsed = 0;
 
 // All LRU Simulation Components
 int counter;
 map<string, int> function_count;
-LRUCache cache(200);
+
 
 class Node {
     public:
@@ -236,13 +236,16 @@ class LRUCache{
 /*                                                                       */
 /*                                                                       */
 /* ===================================================================== */
-
+LRUCache cache(24000);
 
 // Print a memory read record
 VOID RecordMemRead(VOID * ip, VOID * addr)
 {
     //fprintf(trace,"%p: R %p\n", ip, addr);
-    int x = static_cast<int>(reinterpret_cast<std::uintptr_t>(addr));
+    if(silent){
+        return;
+    }
+    int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
     counter++;
     cache.visit(x/4096, 0);
 }
@@ -251,7 +254,10 @@ VOID RecordMemRead(VOID * ip, VOID * addr)
 VOID RecordMemWrite(VOID * ip, VOID * addr)
 {
     //fprintf(trace,"%p: W %p\n", ip, addr);
-    int x = static_cast<int>(reinterpret_cast<std::uintptr_t>(addr));
+    if(silent){
+        return;
+    }
+    int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
     counter++;
     cache.visit(x/4096, 1);
 }
@@ -312,6 +318,16 @@ static VOID Trace(TRACE t_trace, VOID *v)
         numRtnsParsed++;
         //fprintf (trace,"RTN_Name: %s Start.\n", RTN_Name(rtn).c_str());
         string fn = RTN_Name(rtn).c_str();
+        if(counter>=2000000000){
+            silent = true;
+            return;
+        }
+        if(fn=="_Z7do_testv"){
+            silent=false;
+        }
+        if(silent){
+            return;
+        }
         if(function_count.find(fn)==function_count.end()){
             function_count[fn]=0;
         }
@@ -361,6 +377,7 @@ int main(int argc, char *argv[])
     //initialize the variables 
     counter = 0;
     function_count = map<string, int>();
+    silent = true;
 
 
     INS_AddInstrumentFunction(Instruction, 0);
