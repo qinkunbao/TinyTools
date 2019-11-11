@@ -28,7 +28,6 @@ typedef unsigned long uintptr_t;
 using namespace std;
 
 bool silent;
-ofstream trace;
 int numRtnsParsed = 0;
 
 // All LRU Simulation Components
@@ -195,24 +194,33 @@ class LRUCache{
     }
 
     void print_record(){
+        ofstream trace, distance;
+        trace.open("func_trace.out");
+        distance.open("distance.txt");
         map<int, RecordList*>::iterator iter;
         for(iter = visitingRecord.begin(); iter != visitingRecord.end(); iter++){
             trace << iter->first << ": ";
-            bool go = true;
+            int dist;
             Record *rc= iter->second->front;
-            while(go){
+            while(true){
                 trace << "[" << rc->start << "," << rc->visit << "," << rc->end <<"] ";
                 if(!rc->next){
-                    go=false;
+                    break;
                 }
+                dist = rc->next->start - rc->end;
+                distance << dist << "\n";
                 rc = rc->next;
             }
             trace << "\n";
         }
+        trace.close();
+        distance.close();
+        trace.open("func_count.out");
         map<string, int>::iterator i2;
         for(i2=function_count.begin(); i2!= function_count.end();i2++){
             trace << i2->first << ": " << i2->second << "\n";
         }
+        trace.close();
     }
 
     ~LRUCache() {
@@ -349,7 +357,6 @@ VOID Fini(INT32 code, VOID *v)
 {
     //fprintf(trace, "#eof n Start.\n");
     cache.print_record();
-    trace.close();
     ASSERTX(numRtnsParsed != 0);
 }
 
@@ -373,7 +380,7 @@ int main(int argc, char *argv[])
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return Usage();
 
-    trace.open("func_trace.out");
+    
     //initialize the variables 
     counter = 0;
     function_count = map<string, int>();
