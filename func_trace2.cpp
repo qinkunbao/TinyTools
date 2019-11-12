@@ -1,16 +1,6 @@
-/*
- * Copyright 2002-2019 Intel Corporation.
- * 
- * This software is provided to you as Sample Source Code as defined in the accompanying
- * End User License Agreement for the Intel(R) Software Development Products ("Agreement")
- * section 1.L.
- * 
- * This software and the related documents are provided as is, with no express or implied
- * warranties, other than those that are expressly stated in the License.
- */
 
 /*
- *  This file contains an ISA-portable PIN tool for tracing memory accesses.
+ *  This file contains an ISA-portable PIN tool for tracing memory accesses while simulating a LRU cache.
  */
 
 #include <stdio.h>
@@ -24,7 +14,7 @@
 
 //#define PRINT_RTN_INSTRUCTION
 
-typedef unsigned long uintptr_t;
+//typedef long uintptr_t;
 using namespace std;
 
 bool silent;
@@ -37,16 +27,18 @@ map<string, int> function_count;
 
 class Node {
     public:
-    int key, value;
+    long key;
+    int value;
     Node *prev, *next;
-    Node(int k, int v): key(k), value(v), prev(NULL), next(NULL) {}
+    Node(long k, int v): key(k), value(v), prev(NULL), next(NULL) {}
 };
 
 class Record {
     public:
-    int start, visit, end;
+    long start, end;
+    int visit;
     Record *prev, *next;
-    Record(int s): start(s), visit(1), end(-1), prev(NULL), next(NULL) {}
+    Record(long s): start(s), end(-1), visit(1), prev(NULL), next(NULL) {}
 };
 
 class RecordList {
@@ -54,7 +46,7 @@ class RecordList {
     Record *front, *rear;
     RecordList(): front(NULL), rear(NULL) {}
 
-    void add_record(int st){
+    void add_record(long st){
         Record *rec = new Record(st);
         if(!front && !rear) {
             front = rear = rec;
@@ -70,7 +62,7 @@ class RecordList {
         rear->visit++;
     }
 
-    void end_record(int ed){
+    void end_record(long ed){
         rear->end = ed;
     }
 };
@@ -85,7 +77,7 @@ class DoublyLinkedList {
     public:
     DoublyLinkedList(): front(NULL), rear(NULL) {}
     
-    Node* add_page_to_head(int key, int value) {
+    Node* add_page_to_head(long key, int value) {
         Node *page = new Node(key, value);
         if(!front && !rear) {
             front = rear = page;
@@ -141,19 +133,19 @@ class DoublyLinkedList {
 class LRUCache{
     int capacity, size;
     DoublyLinkedList *pageList;
-    map<int, Node*> pageMap;
-    map<int, RecordList*> visitingRecord;
+    map<long, Node*> pageMap;
+    map<long, RecordList*> visitingRecord;
 
     public:
     LRUCache(int capacity) {
         this->capacity = capacity;
         size = 0;
         pageList = new DoublyLinkedList();
-        pageMap = map<int, Node*>();
-        visitingRecord = map<int, RecordList*>();
+        pageMap = map<long, Node*>();
+        visitingRecord = map<long, RecordList*>();
     }
 
-    int check(int key) {
+    int check(long key) {
         if(pageMap.find(key)==pageMap.end()) {
             return -1;
         }
@@ -164,7 +156,7 @@ class LRUCache{
         return val;
     }
 
-    void visit(int key, int value) {
+    void visit(long key, int value) {
         if(pageMap.find(key)!=pageMap.end()) {
             // if key already present, update value and move page to head
             pageMap[key]->value = value;
@@ -175,7 +167,7 @@ class LRUCache{
 
         if(size == capacity) {
             // remove rear page
-            int k = pageList->get_rear_page()->key;
+            long k = pageList->get_rear_page()->key;
             pageMap.erase(k);
             pageList->remove_rear_page();
 
@@ -197,10 +189,10 @@ class LRUCache{
         ofstream trace, distance;
         trace.open("func_trace.out");
         distance.open("distance.txt");
-        map<int, RecordList*>::iterator iter;
+        map<long, RecordList*>::iterator iter;
         for(iter = visitingRecord.begin(); iter != visitingRecord.end(); iter++){
             trace << iter->first << ": ";
-            int dist;
+            long dist;
             Record *rc= iter->second->front;
             while(true){
                 trace << "[" << rc->start << "," << rc->visit << "," << rc->end <<"] ";
@@ -224,7 +216,7 @@ class LRUCache{
     }
 
     ~LRUCache() {
-        map<int, Node*>::iterator i1;
+        map<long, Node*>::iterator i1;
         for(i1=pageMap.begin();i1!=pageMap.end();i1++) {
             delete i1->second;
         }
@@ -253,7 +245,8 @@ VOID RecordMemRead(VOID * ip, VOID * addr)
     if(silent){
         return;
     }
-    int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
+    //int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
+    long x = (long) addr;
     counter++;
     cache.visit(x/4096, 0);
 }
@@ -265,7 +258,8 @@ VOID RecordMemWrite(VOID * ip, VOID * addr)
     if(silent){
         return;
     }
-    int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
+    //int x = static_cast<int>(reinterpret_cast<uintptr_t>(addr));
+    long x = (long) addr;
     counter++;
     cache.visit(x/4096, 1);
 }
