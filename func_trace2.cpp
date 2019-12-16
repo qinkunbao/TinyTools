@@ -1,4 +1,3 @@
-
 /*
  *  This file contains an ISA-portable PIN tool for tracing memory accesses while simulating a LRU cache.
  */
@@ -21,8 +20,83 @@ bool silent;
 int numRtnsParsed = 0;
 
 // All LRU Simulation Components
-int counter;
+long counter;
 map<string, int> function_count;
+
+
+class Stamp {
+    public:
+    long page;
+    Node *prev, *next;
+    Node(long p): page(p), prev(NULL), next(NULL) {}
+};
+
+class StampQueue {
+    public:
+    Stamp *front, *rear;
+    map<long, Stamp*> smap;;
+    StampQueue(): front(NULL), rear(NULL), smap(NULL) {}
+
+    void visit_stamp(long pn){
+        Stamp *stmp;
+        if(!front && !rear) {
+            stmp = new Stamp(pn);
+            smap = map<long, Stamp*>();
+            front = rear = stmp;
+            smap[pn] = stmp;
+        }
+        else {
+            if(smap.find(pn)!=smap.end()) {
+                update_stamp(smap[pn]);
+            }
+            else{
+                stmp = new Stamp(pn);
+                rear->next = stmp;
+                stmp->prev = rear;
+                rear = stmp;
+                smap[pn] = stmp;
+            }
+        }
+    }
+
+    void update_stamp(Stamp *sp) {
+        if(sp == rear) {
+            return;
+        }
+
+
+        if(sp == front) {
+            front = front->next;
+            front->prev = NULL;
+        }
+        else {
+            sp->prev->next = sp->next;
+            sp->next->prev = sp->prev;
+        }
+
+        rear->next = sp;
+        sp->prev = rear;
+        sp->next = NULL;
+        rear = sp;
+    }
+
+    int count_reuse_distance(long pn){
+        
+        if(smap.find(pn)==smap.end()) {
+            return -1;
+        }
+        int dist = 0;
+        Stamp *rc = smap[pn];
+        while(true){
+            if(!rc->next){
+                break;
+            }
+            rc = rc->next;
+            dist++;
+        }
+        return dist;
+    }
+};
 
 
 class Node {
@@ -36,9 +110,9 @@ class Node {
 class Record {
     public:
     long start, end;
-    int visit;
+    int visit, reuse_dist;
     Record *prev, *next;
-    Record(long s): start(s), end(-1), visit(1), prev(NULL), next(NULL) {}
+    Record(long s, int d): start(s), end(-1), visit(1), reuse_dist(d), prev(NULL), next(NULL) {}
 };
 
 class RecordList {
@@ -46,8 +120,8 @@ class RecordList {
     Record *front, *rear;
     RecordList(): front(NULL), rear(NULL) {}
 
-    void add_record(long st){
-        Record *rec = new Record(st);
+    void add_record(long st, int d){
+        Record *rec = new Record(st, d);
         if(!front && !rear) {
             front = rear = rec;
         }
@@ -133,6 +207,7 @@ class DoublyLinkedList {
 class LRUCache{
     int capacity, size;
     DoublyLinkedList *pageList;
+    StampQueue *stampqueue;
     map<long, Node*> pageMap;
     map<long, RecordList*> visitingRecord;
 
@@ -141,6 +216,7 @@ class LRUCache{
         this->capacity = capacity;
         size = 0;
         pageList = new DoublyLinkedList();
+        stampqueue = new StampQueue();
         pageMap = map<long, Node*>();
         visitingRecord = map<long, RecordList*>();
     }
@@ -157,6 +233,9 @@ class LRUCache{
     }
 
     void visit(long key, int value) {
+        //update stamp queue
+        stampqueue->visit_stamp(key);
+
         if(pageMap.find(key)!=pageMap.end()) {
             // if key already present, update value and move page to head
             pageMap[key]->value = value;
@@ -180,23 +259,30 @@ class LRUCache{
         if(visitingRecord.find(key) == visitingRecord.end()){
             visitingRecord[key] = new RecordList();
         }
-        visitingRecord[key]->add_record(counter);
+        int d = stampqueue->count_reuse_distance(key);
+        visitingRecord[key]->add_record(counter, d);
         size++;
         pageMap[key] = page;
     }
 
     void print_record(){
-        ofstream trace, distance;
+        ofstream trace, distance, pg_freq, reuse_ct;
         trace.open("func_trace.out");
-        distance.open("distance.txt");
+        distance.open("mem_distance.txt");
+        pg_freq.open("page_freq.txt");
+        reuse_ct.open("reuse_distance");
         map<long, RecordList*>::iterator iter;
         for(iter = visitingRecord.begin(); iter != visitingRecord.end(); iter++){
             trace << iter->first << ": ";
             long dist;
+            long freq = 0;
             Record *rc= iter->second->front;
             while(true){
                 trace << "[" << rc->start << "," << rc->visit << "," << rc->end <<"] ";
+                reuse_ct << rc->reuse_dist << "\n";
+                freq += rc->visit;
                 if(!rc->next){
+                    pg_freq << freq << "\n";
                     break;
                 }
                 dist = rc->next->start - rc->end;
@@ -207,6 +293,8 @@ class LRUCache{
         }
         trace.close();
         distance.close();
+        pg_freq.close();
+        reuse_ct.close();
         trace.open("func_count.out");
         map<string, int>::iterator i2;
         for(i2=function_count.begin(); i2!= function_count.end();i2++){
@@ -320,10 +408,12 @@ static VOID Trace(TRACE t_trace, VOID *v)
         numRtnsParsed++;
         //fprintf (trace,"RTN_Name: %s Start.\n", RTN_Name(rtn).c_str());
         string fn = RTN_Name(rtn).c_str();
+        /*
         if(counter>=2000000000){
             silent = true;
             return;
         }
+        */
         if(fn=="_Z7do_testv"){
             silent=false;
         }
