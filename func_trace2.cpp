@@ -27,21 +27,20 @@ map<string, int> function_count;
 class Stamp {
     public:
     long page;
-    Node *prev, *next;
-    Node(long p): page(p), prev(NULL), next(NULL) {}
+    Stamp *prev, *next;
+    Stamp(long p): page(p), prev(NULL), next(NULL) {}
 };
 
 class StampQueue {
     public:
     Stamp *front, *rear;
     map<long, Stamp*> smap;;
-    StampQueue(): front(NULL), rear(NULL), smap(NULL) {}
+    StampQueue(): front(NULL), rear(NULL), smap(map<long, Stamp*>()) {}
 
     void visit_stamp(long pn){
         Stamp *stmp;
         if(!front && !rear) {
             stmp = new Stamp(pn);
-            smap = map<long, Stamp*>();
             front = rear = stmp;
             smap[pn] = stmp;
         }
@@ -97,6 +96,7 @@ class StampQueue {
         return dist;
     }
 };
+
 
 
 class Node {
