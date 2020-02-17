@@ -69,7 +69,7 @@ class LRUCache(object):
             self.swapped_history[item].append(self.hash[item])
             self.record[item][len(self.record[item])-1].extend((self.hash[item], -1))
         #print(self.record)
-        f = open("dict.txt","w")
+        f = open("dict2.txt","w")
         for k, v in self.record.items():
             f.write(str(k) + ': '+ str(v) + '\n')
         f.close()
@@ -83,6 +83,8 @@ Pcache = LRUCache(PTcapacity)
 with open('tiny_trace.txt', 'r') as f0:
     for i in f0:
         target = i.rstrip("\n").split(' ')[2]
+        if(target == 'Start.'):
+            continue
         page = target[:-3]
         Pcache.visitItem(page)
 
