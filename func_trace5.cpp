@@ -14,12 +14,12 @@
 
 //typedef long uintptr_t;
 using namespace std;
-
+typedef unsigned long addr_t;
 bool silent;
 int numRtnsParsed = 0;
 
 // All LRU Simulation Components
-long counter;
+unsigned long counter;
 map<string, int> function_count;
 
 
@@ -345,7 +345,7 @@ LRUCache cache(24000);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-typedef unsigned long addr_t;
+
 typedef enum
 {
     Access_I_FETCH, /* An instruction fetch. Read from the I-cache. */
@@ -411,9 +411,9 @@ long findrow(addr_t addr, CacheInfo c){
     long row_mask;
     long row_bits;
     long ind;
-    row_bits=(int)log2(c.num_blocks/c.associativity);
-    row_shift=2+(int)log2(c.words_per_block);
-    row_mask=(1<<row_bits)-1;
+    row_bits=(long)log2(c.num_blocks/c.associativity);
+    row_shift=2+(long)log2(c.words_per_block);//+2 why?
+    row_mask=((long)1<<row_bits)-1;
     ind=(addr>>row_shift)&row_mask;
     return ind;
 }
@@ -425,11 +425,12 @@ long findtag(addr_t addr, CacheInfo c){
     long tag_bits;
     long row_bits;
     long tag;
-    row_bits=(int)log2(c.num_blocks/c.associativity);
-    tag_bits=46-row_bits-(int)log2(c.words_per_block);
-    tag_shift=2+(int)log2(c.words_per_block)+row_bits;
-    tag_mask=(1<<tag_bits)-1;
+    row_bits=(long)log2(c.num_blocks/c.associativity);
+    tag_bits=46-row_bits-(long)log2(c.words_per_block);
+    tag_shift=2+(long)log2(c.words_per_block)+row_bits;
+    tag_mask=((long)1<<tag_bits)-1;
     tag=(addr>>tag_shift)&tag_mask;
+    //printf("tag mask:%lu tag bits:%lu", tag_mask, tag_bits);
     return tag;
 }
 
@@ -513,8 +514,10 @@ void print_valid(struct Cache *cac,CacheInfo c){
 //function to read from associative cache
 void seekcacheR(addr_t address, struct Cache *cac, CacheInfo c, int stage){
     //find the block index and tag from the address
+    
     long block=findrow(address,c)*c.associativity;
     long tag=findtag(address,c);
+    //printf("L%d Reading %lx . tag %lx, block %lx \n", stage, address, tag, block);
     long newplace;
     //check if it is the miss case
     long find=find_in_set(block, tag, cac,c);
@@ -538,11 +541,13 @@ void seekcacheR(addr_t address, struct Cache *cac, CacheInfo c, int stage){
         cac->valid[newplace]=1;
         cac->miss++;
         cac->read++;
+        
         if(stage!=-1&&stage<2){
             seekcacheR(address, &Dcache[stage+1], dcache_info[stage+1], stage+1);
         }
         if(stage == 2){
-            cache.visit((long)address, 0);
+            cache.visit((long)address/1024, 0);
+            //printf("Reading %lu \n", address);
         }
     }
     else{
@@ -676,7 +681,7 @@ void write_B_A(addr_t address, struct Cache *cac, CacheInfo c, int stage){
             write_B_A(address, &Dcache[stage+1], dcache_info[stage+1], stage+1);
         }
         if(stage == 2){
-            cache.visit((long)address, 1);
+            cache.visit((long)address/1024, 1);
         }
     }
     else{
@@ -748,7 +753,7 @@ void handle_access(int type, addr_t address)
             
             seekcacheR(address, &Dcache[0], dcache_info[0],0);
             
-            //printf("D_READ at %08lx\n", address);
+            //printf("D_READ at %lx\n", address);
             break;
         case 1:
             if(dcache_info[0].write_scheme==Write_WRITE_THROUGH){
@@ -763,7 +768,7 @@ void handle_access(int type, addr_t address)
                 write_B_A(address, &Dcache[0], dcache_info[0],0);
             }
             
-            //printf("D_WRITE at %08lx\n", address);
+            //printf("D_WRITE at %lx\n", address);
             break;
     }
 }
@@ -929,7 +934,7 @@ int main(int argc, char *argv[])
     //initialize the variables 
     counter = 0;
     function_count = map<string, int>();
-    silent = false;
+    silent = true;
     setup_caches();
 
 
